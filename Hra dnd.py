@@ -182,6 +182,7 @@ player_wisdom = 0
 player_inventory_weapons = []
 player_inventory_armors = [] 
 player_inventory_potions = []
+weapon_bonus = 0
 
 # Funkce pro vybavení fightera
 def vybaveni_fighter():
@@ -361,6 +362,8 @@ goblin_health = 10
 goblin_armor_class = 12
 goblin_attack_fight = 3
 goblin_dexterity = 2  # Bonus k iniciativě
+goblin_debuff = 0
+
 # Funkce pro určení vlastnosti pro útok
 def get_attack_bonus():
     if player_class == "ranger":
@@ -430,15 +433,14 @@ def player_attack():
     attack = int(entry_attack.get())
     attack_bonus = get_attack_bonus()
     ability = get_attack_bonus_text()
-    attack_result = attack + attack_bonus + player_proficiency_bonus
-
+    attack_result = attack + attack_bonus + player_proficiency_bonus + weapon_bonus
     if attack == 20:
-        type_text(text_output,f"Kritický zásah! {attack_result} (Hod kostkou: {attack} + {ability} + {attack_bonus} + Proficiency bonus: {player_proficiency_bonus})\n")
+        type_text(text_output,f"Kritický zásah! {attack_result} (Hod kostkou: {attack} + {ability} + {attack_bonus} + Proficiency bonus: {player_proficiency_bonus} + síla zbraně: {weapon_bonus})\n")
         damage_label.pack()
         entry_damage.pack()
         damage_button.pack()
     else: 
-        type_text(text_output, f"{attack_result} (Hod kostkou: {attack} + {ability} + {attack_bonus} + Proficiency bonus: {player_proficiency_bonus})\n")
+        type_text(text_output, f"{attack_result} (Hod kostkou: {attack} + {ability} + {attack_bonus} + Proficiency bonus: {player_proficiency_bonus} + síla zbraně: {weapon_bonus})\n")
         if attack_result >= goblin_armor_class:
             type_text(text_output, "Zásah!\n")
             damage_label.pack()
@@ -477,8 +479,8 @@ def goblin_attack():
     global player_hp
     if goblin_health > 0:
         result = random.choice(d20)
-        attack_result = result + goblin_attack_fight
-        type_text(text_output, f"Goblin útočí: {attack_result} (Hod kostkou: {result} + goblinův bonus: {goblin_attack_fight})\n")
+        attack_result = result + goblin_attack_fight + goblin_debuff
+        type_text(text_output, f"Goblin útočí: {attack_result} (Hod kostkou: {result} + goblinův bonus: {goblin_attack_fight} + {goblin_debuff})\n")
         if attack_result >= player_armor_class:
             type_text(text_output, "Goblin tě zasáhl!\n")
             damage_roll = random.choice(d6)
@@ -513,14 +515,46 @@ inventory_listbox_weapons.pack(fill=tk.BOTH, expand=True)
 inventory_listbox_weapons.config(font=("Helvetica", 10, "bold"))
 
 # Funkce pro výběr zbraně
+def update_damage_label():
+    global current_weapon
+    if current_weapon == "Dlouhý meč":
+        damage_label.config(text ="Hoď D10 a zadej výsledek")
+
+    elif current_weapon == "Těžká kuše":
+        damage_label.config(text ="Hoď D8 a zadej výsledek")
+    elif current_weapon == "Krátký meč":
+        damage_label.config(text ="Hoď D6 a zadej výsledek")
+    elif current_weapon == "Dlouhý luk":
+        damage_label.config(text ="Hoď D10 a zadej výsledek")
+
 def select_weapons():
     global current_weapon
-    selected_index = inventory_listbox_weapons.curselection()
-    if selected_index:
-        current_weapon = inventory_listbox_weapons.get(selected_index)
+    selected_weapons = inventory_listbox_weapons.curselection()
+    if selected_weapons:
+        current_weapon = inventory_listbox_weapons.get(selected_weapons)
         type_text(text_output, f"Zvolili jste si zbraň: {current_weapon}\n")
         update_current_weapon_display()
 
+    if current_weapon == "Dlouhý meč":
+        global weapon_bonus
+        global goblin_debuff
+        weapon_bonus = 2
+        update_player_stats()
+        update_damage_label()
+    elif current_weapon == "Těžká kuše":
+        goblin_debuff = -2
+        update_player_stats()
+        update_damage_label()
+    elif current_weapon == "Krátký meč":
+        weapon_bonus = 2
+        update_player_stats()
+        update_damage_label()
+    elif current_weapon == "Dlouhý luk":
+        goblin_debuff = -2
+        update_player_stats()
+        update_damage_label()
+
+        
 # Funkce pro aktualizaci zobrazení inventáře zbraní
 def update_inventory_weapons():
     inventory_listbox_weapons.delete(0, tk.END)
@@ -528,9 +562,10 @@ def update_inventory_weapons():
         inventory_listbox_weapons.insert(tk.END, item)
         
 
-# Tlačítko pro obléknutí armoru
+# Tlačítko pro vybavení zbraně
 select_weapons_button = tk.Button(right_frame, text="Vyzbrojit se", command=select_weapons)
 select_weapons_button.pack(pady=5)
+
 
 
 inventory_armors_label = tk.Label(right_frame, text="Zbroje", font=("Helvetica", 13, "bold"))
@@ -549,7 +584,6 @@ def select_armors():
         update_player_stats()
 
     if selected_armors == "Lehká zbroj":
-        player_armor_class
         player_armor_class = 10 + player_dexterity + 1
         type_text(text_output, f"Oblékli jste si lehkou zbroj. Vaše Armor Class je nyní: {player_armor_class}, 10 + vaše dexterity: {player_dexterity} + lehká zbroj: 1.")
         update_player_stats()
@@ -646,7 +680,7 @@ entry_initiative = tk.Entry(bottom_frame)
 attack_label = tk.Label(bottom_frame, text="Hoď d20 na útok a zadejte výsledek")
 entry_attack = tk.Entry(bottom_frame)
 
-damage_label = tk.Label(bottom_frame, text="Hoď damage d10 a zadejte výsledek")
+damage_label = tk.Label(bottom_frame, text= "Hoď damage d10 a zadejte výsledek")
 entry_damage = tk.Entry(bottom_frame)
 
 # Spuštění hlavní smyčky
