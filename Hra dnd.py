@@ -35,6 +35,11 @@ middle_frame.pack_propagate(False)  # Zabránění automatickému přizpůsoben�
 right_frame = tk.Frame(root)
 right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
+# Status, ve kterém se právě hra nachází
+game_state = "menu"
+def change_game_status(new_state):
+    global game_state
+    game_state = new_state
 
 # Hlavní textové okno
 main_text_label = tk.Label(middle_frame, text="Průběh souboje", font=("Helvetica", 16, "bold"))
@@ -182,8 +187,9 @@ player_wisdom = 0
 player_inventory_weapons = []
 player_inventory_armors = [] 
 player_inventory_potions = []
+player_inventory_spells = []
 weapon_bonus = 0
-
+spell_damage = 0
 # Funkce pro vybavení fightera
 def vybaveni_fighter():
     global player_max_hp
@@ -205,6 +211,7 @@ def vybaveni_fighter():
     global player_inventory_weapons
     global player_inventory_armors
     global player_inventory_potions
+    global player_inventory_spells
     global player_money 
 
     player_max_hp = 13
@@ -225,6 +232,7 @@ def vybaveni_fighter():
     player_inventory_weapons.extend(["Dlouhý meč", "Těžká kuše"])
     player_inventory_armors.extend(["Těžká zbroj"])
     player_inventory_potions.extend(["Malý léčivý lektvar"])
+    player_inventory_spells.extend(["Neutuchající obrana"])
     player_money = 20
     return "Těžká zbroj, meč, malý léčivý lektvar a 20 zlatých"
 
@@ -249,7 +257,9 @@ def vybaveni_ranger():
     global player_inventory_weapons
     global player_inventory_armors
     global player_inventory_potions
+    global player_inventory_spells
     global player_money
+    
 
     player_max_hp = 11
     player_hp = 11
@@ -269,6 +279,7 @@ def vybaveni_ranger():
     player_inventory_weapons.extend(["Dlouhý luk", "Krátký meč"])
     player_inventory_armors.extend(["Lehká zbroj"])
     player_inventory_potions.extend(["Malý léčivý lektvar"])
+    player_inventory_spells.extend(["Léčení", "Přesná trefa"])
     player_money = 20
     return "Lehká zbroj, dlouhý luk, krátký meč, malý léčivý lektvar a 20 zlatých"
 
@@ -293,6 +304,7 @@ def vybaveni_wizard():
     global player_inventory_weapons
     global player_inventory_armors
     global player_inventory_potions
+    global player_inventory_spells
     global player_money
 
     player_max_hp = 7
@@ -313,12 +325,13 @@ def vybaveni_wizard():
     player_inventory_weapons.extend(["Hůl"])
     player_inventory_armors.extend([])
     player_inventory_potions.extend(["Malý léčivý lektvar"])
+    player_inventory_spells.extend(["Naváděné střely", "Mágův štít"])
     player_money = 20
     return "Hůl, malý léčivý lektvar a 20 zlatých"
     
 # Funkce pro kouzla wizarda
 def kouzla_wizard():
-    return "Firebolt, chromatic orb (1. slotové)"
+    return "Naváděné střely, Mágův štít"
 
 
 # Výběr classy
@@ -347,13 +360,9 @@ def choose_class():
     update_inventory_weapons()
     update_inventory_armors()
     update_inventory_potions()
+    update_inventory_spells()
     update_money()
     
-def meeting_with_goblin():
-    ok_button.pack_forget()
-    type_text(text_output, "Hned co jste dorazili na cestu se vám do cesty postavil goblin co na vás zaútočil.\n")
-    start_fight.pack()
-    start_fight()
 
 # boj
 # boj
@@ -384,16 +393,13 @@ def get_attack_bonus_text():
         return "Síla"
     
 
-  # Vstupní pole pro iniciativu, útok a poškození
-
-initiative_label = tk.Label(root, text="Hoďte d20 na iniciativu a zadejte výsledek")
-entry_initiative = tk.Entry(root)
-
-attack_label = tk.Label(root, text="Hoď d20 na útok a zadejte výsledek")
-entry_attack = tk.Entry(root)
-
-damage_label = tk.Label(root, text="Hoď damage d10 a zadejte výsledek")
-entry_damage = tk.Entry(root)  
+def meeting_with_goblin():
+    ok_button.pack_forget()
+    type_text(text_output, "Hned co jste dorazili na cestu se vám do cesty postavil goblin co na vás zaútočil.\n")
+    start_fight.pack()
+    start_fight()
+def second_act():
+    type_text(text_output, "pokračuješ dál")
 
 #Boj s jedním goblinem
 def fight_with_one_goblin():
@@ -407,7 +413,11 @@ def process_initiative():
     initiative_label.pack_forget()
     entry_initiative.pack_forget()
     initiative_button.pack_forget()
-    
+
+    change_game_status("Combat")
+
+        
+
     roll_initiative = int(entry_initiative.get())
     player_initiative = roll_initiative + player_dexterity
     goblin_initiative = random.choice(d20) + goblin_dexterity
@@ -433,6 +443,9 @@ def player_attack():
     attack = int(entry_attack.get())
     attack_bonus = get_attack_bonus()
     ability = get_attack_bonus_text()
+    
+    
+
     attack_result = attack + attack_bonus + player_proficiency_bonus + weapon_bonus
     if attack == 20:
         type_text(text_output,f"Kritický zásah! {attack_result} (Hod kostkou: {attack} + {ability} + {attack_bonus} + Proficiency bonus: {player_proficiency_bonus} + síla zbraně: {weapon_bonus})\n")
@@ -450,8 +463,10 @@ def player_attack():
             type_text(text_output, "Netrefil ses, nyní bude útočit goblin\n")
             goblin_attack()
 
+
 def player_damage():
     global goblin_health
+    global spell_damage
     damage_label.pack_forget()
     entry_damage.pack_forget()
     damage_button.pack_forget()
@@ -460,6 +475,7 @@ def player_damage():
     attack_bonus = get_attack_bonus()
     ability = get_attack_bonus_text()
 
+
     if int(entry_attack.get()) == 20:  # Kritický zásah
         total_damage = (damage_roll * 2) + attack_bonus
         type_text(text_output, f"Zasáhl si za: {total_damage} (Hod kostkou *2: {damage_roll} + {ability}: {attack_bonus})\n")
@@ -467,14 +483,31 @@ def player_damage():
         total_damage = damage_roll + attack_bonus
         type_text(text_output, f"Zasáhl si za: {total_damage} (Hod kostkou: {damage_roll} + {ability}: {attack_bonus})\n")
 
+    total_damage += spell_damage  # Přidání spell_damage k celkovému poškození
+    spell_damage = 0  # Resetování spell_damage po použití
+
+    
     goblin_health -= total_damage
     if goblin_health <= 0:
         type_text(text_output, "Zabil jsi goblina\n")
         messagebox.showinfo("Vítězství", "Zabil jsi goblina!")
+        second_act()
     else:
         type_text(text_output, f"Goblin má nyní {goblin_health} HP. Goblin tvůj útok přežil. Nyní bude útočit goblin\n")
         goblin_attack()
 
+def spell_attack(damage):
+    global goblin_health
+    global spell_damage
+    goblin_health -= damage
+    if goblin_health <= 0:
+        type_text(text_output, f"Zabil jsi goblina kouzlem. Způsobil jsi: {damage} damage.")
+        messagebox.showinfo("Vítězství", "Zabil jsi goblina kouzlem!")
+        second_act()
+    else:
+        type_text(text_output, f"Goblin má nyní {goblin_health} HP. Goblin tvůj kouzelný útok přežil. Nyní bude útočit goblin\n")
+        goblin_attack()
+        
 def goblin_attack():
     global player_hp
     if goblin_health > 0:
@@ -508,10 +541,12 @@ def goblin_attack():
 
     # inventář
     # inventář
+text_output_inventory = tk.Text(right_frame, height=30, width=100)
+
 inventory_weapons_label = tk.Label(right_frame, text="Zbraně", font=("Helvetica", 13, "bold"))
 inventory_weapons_label.pack(pady=1)
-inventory_listbox_weapons = tk.Listbox(right_frame, selectmode=tk.SINGLE)
-inventory_listbox_weapons.pack(fill=tk.BOTH, expand=True)
+inventory_listbox_weapons = tk.Listbox(right_frame, selectmode=tk.SINGLE, heigh=6)
+inventory_listbox_weapons.pack(fill=None, expand=False)
 inventory_listbox_weapons.config(font=("Helvetica", 10, "bold"))
 
 # Funkce pro výběr zbraně
@@ -554,24 +589,14 @@ def select_weapons():
         update_player_stats()
         update_damage_label()
 
-        
-# Funkce pro aktualizaci zobrazení inventáře zbraní
-def update_inventory_weapons():
-    inventory_listbox_weapons.delete(0, tk.END)
-    for item in player_inventory_weapons:
-        inventory_listbox_weapons.insert(tk.END, item)
-        
-
 # Tlačítko pro vybavení zbraně
 select_weapons_button = tk.Button(right_frame, text="Vyzbrojit se", command=select_weapons)
 select_weapons_button.pack(pady=5)
 
-
-
 inventory_armors_label = tk.Label(right_frame, text="Zbroje", font=("Helvetica", 13, "bold"))
 inventory_armors_label.pack(pady=1)
-inventory_listbox_armors = tk.Listbox(right_frame, selectmode=tk.SINGLE)
-inventory_listbox_armors.pack(fill=tk.BOTH, expand=True)
+inventory_listbox_armors = tk.Listbox(right_frame, selectmode=tk.SINGLE, heigh=6)
+inventory_listbox_armors.pack(fill=None, expand=False)
 inventory_listbox_armors.config(font=("Helvetica", 10, "bold"))
 
 # Funkce pro výběr armoru
@@ -592,10 +617,44 @@ def select_armors():
 select_armors_button = tk.Button(right_frame, text="Obléknout armor", command=select_armors)
 select_armors_button.pack(pady=5)
 
+# Funkce pro výběr spellu
+inventory_spells_label = tk.Label(right_frame, text="Schopnosti a kouzla", font=("Helvetica", 13, "bold"))
+inventory_spells_label.pack(pady=1)
+inventory_listbox_spells = tk.Listbox(right_frame, selectmode=tk.SINGLE, heigh=6)
+inventory_listbox_spells.pack(fill=None, expand=False)
+inventory_listbox_spells.config(font=("Helvetica", 10, "bold"))
+
+def select_spell():
+    global spell_damage
+    selected_spells = inventory_listbox_spells.get(inventory_listbox_spells.curselection())
+    # Wizard
+    if selected_spells == "Mágův štít":
+        global player_armor_class
+        player_armor_class = 10 + player_dexterity + 3
+        type_text(text_output, f"Zakouzlili jste na sebe mágův štít. Máte + 3 k armor class, ta je nyní {player_armor_class}")
+        update_player_stats()
+    if selected_spells == "Naváděné střely":
+        global spell_damage
+        global game_state
+        if game_state == "Combat":
+            result_misile = simpledialog.askinteger("Hod kostkou", "Hoď si 3d4 a zadej výsledek:")
+            if result_misile is not None:
+                spell_damage = result_misile + 6
+                type_text(text_output, f"Zasáhl jsi za {spell_damage} poškození.")
+                player_attack(spell_damage)
+        else:
+            type_text(text_output, f"Toto kouzlo nemůžeš použít mimo boj a mimo svůj tah.")
+
+# Tlačítko aktivování spellu
+select_spell_button = tk.Button(right_frame, text="Použít schopnost", command=select_spell)
+select_spell_button.pack(pady=0)
+
+
+# Lektvar
 inventory_potions_label = tk.Label(right_frame, text="Lektvary", font=("Helvetica", 13, "bold"))
 inventory_potions_label.pack(pady=1)
-inventory_listbox_potions = tk.Listbox(right_frame, selectmode=tk.SINGLE)
-inventory_listbox_potions.pack(fill=tk.BOTH, expand=True)
+inventory_listbox_potions = tk.Listbox(right_frame, selectmode=tk.SINGLE, heigh=6)
+inventory_listbox_potions.pack(fill=None, expand=False)
 inventory_listbox_potions.config(font=("Helvetica", 10, "bold"))
 
 # Funkce pro výběr lektvaru
@@ -637,6 +696,11 @@ def update_inventory_potions():
     inventory_listbox_potions.delete(0, tk.END)
     for item in player_inventory_potions:
         inventory_listbox_potions.insert(tk.END, item)
+
+def update_inventory_spells():
+    inventory_listbox_spells.delete(0, tk.END)
+    for item in player_inventory_spells:
+        inventory_listbox_spells.insert(tk.END, item)
 
 # Mince
 def update_money():
